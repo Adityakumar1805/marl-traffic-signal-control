@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets. The project needs none - it has no API keys, no database and makes no
+# outbound calls - so anything matching these is a local experiment that must not be
+# published. Configure hosting-platform values as environment variables in the
+# platform's own dashboard, never in a committed file.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!models/**/*.key
+secrets.*
+credentials.json
+*_token.txt
+.netrc
+
+# Generated SUMO networks and logs (rebuilt on demand)
+scenarios/generated/
+*.log
+
+# outputs/ IS tracked on purpose: README.md, REPORT.md and docs/VIVA_MASTER.md quote
+# these exact CSVs/plots, so the published repo has to carry its own evidence.
+# Only throwaway artefacts are ignored: the --quick training log and curve, benchmarks on
+# other backends (run.py eval --backend sumo), and browser-check screenshots.
+outputs/logs/train_quick.csv
+outputs/training_curve_quick.png
+outputs/sumo/
+outputs/auto/
+outputs/e2e/
+
+# Local-only artefacts: zips (share one through a GitHub Release instead) and the slide
+# deck (a submission artefact, handed in separately)
+*.zip
+*.pptx
+
+# Keep the shipped pre-trained model, but ignore ad-hoc checkpoints
+models/checkpoints/
+models/**/*.tmp
+
+# TensorBoard
+runs/
+
+# Do NOT ignore the shipped pretrained model:
+!models/pretrained/
+!models/pretrained/**
+# ...except the few-minute models `run.py train --quick` writes next to it
+models/pretrained/*_quick.pt
+models/pretrained/*_quick_final.pt

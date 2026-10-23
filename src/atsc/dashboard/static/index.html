@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" data-build="__ATSC_BUILD__" data-transport="__ATSC_TRANSPORT__">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#090e1a">
+  <meta name="description" content="Live race on identical traffic: an RL Agent System (four multi-agent deep reinforcement learning signal controllers) against a traditional fixed-time system, with live emergency-vehicle tracking.">
+  <title>Adaptive Traffic Signal Control · Live</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script type="module" src="/static/js/main.js"></script>
+</head>
+<body>
+  <a class="skip" href="#arena">Skip to the live grids</a>
+
+  <div class="wrap">
+    <header class="top">
+      <svg class="logo" viewBox="0 0 20 40" aria-hidden="true"><rect x="1" y="1" width="18" height="38" rx="6" class="logo-body"/><circle cx="10" cy="9.5" r="4.2" class="lamp-r"/><circle cx="10" cy="20" r="4.2" class="lamp-a"/><circle cx="10" cy="30.5" r="4.2" class="lamp-g"/></svg>
+      <div class="titles">
+        <h1>Adaptive Traffic Signal Control</h1>
+        <p class="sub"><span class="long">Same vehicles enter both grids at the same moments — <span class="c-rl">green</span> is the RL Agent System, <span class="c-tr">grey</span> the Traditional Traffic System. Lower numbers are better.</span><span class="short">Same traffic on both grids · <span class="c-rl">green</span> = RL Agent System · lower is better</span></p>
+      </div>
+      <div class="status">
+        <span class="live" id="liveState" data-state="connecting"><i id="connDot" aria-hidden="true"></i><span id="statusText" role="status" aria-live="polite">Connecting…</span></span>
+        <span class="auto-note" id="autoNote" role="status" hidden></span>
+        <span class="minute" id="minuteText">Minute 0 of 30</span>
+        <span class="prog" aria-hidden="true"><b id="epBar"></b></span>
+      </div>
+      <button type="button" class="iconbtn" id="helpBtn" aria-label="How to read this page" aria-haspopup="dialog">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3"/><path d="M6.2 6.3a1.9 1.9 0 1 1 2.6 1.7c-.6.3-.8.7-.8 1.3"/><circle cx="8" cy="11.4" r=".55" class="fill"/></svg>
+      </button>
+      <button type="button" class="iconbtn present" id="presentBtn" aria-label="Presentation mode (full screen)" aria-pressed="false">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>
+      </button>
+    </header>
+
+    <nav class="toolbar" id="toolbar" aria-label="Simulation controls">
+      <div class="grp">
+        <button type="button" id="playPause" class="btn primary" aria-pressed="true"><svg viewBox="0 0 16 16" aria-hidden="true" class="ico-pause"><rect x="3.5" y="2.5" width="3.2" height="11" rx="1"/><rect x="9.3" y="2.5" width="3.2" height="11" rx="1"/></svg><svg viewBox="0 0 16 16" aria-hidden="true" class="ico-play"><path d="M4.5 2.8v10.4L13 8z"/></svg><span id="playText">Pause</span></button>
+        <button type="button" id="resetBtn" class="btn" title="Replay the same traffic from the start, for everyone watching"><svg viewBox="0 0 16 16" aria-hidden="true" class="stroke"><path d="M2.8 8.2A5.2 5.2 0 1 0 4.4 4.3"/><path d="M2.6 2.3v3.4H6"/></svg>Restart</button>
+      </div>
+      <div class="grp">
+        <span class="lbl" id="trafficLabel">Traffic</span>
+        <div class="seg" id="trafficSeg" role="radiogroup" aria-labelledby="trafficLabel"></div>
+      </div>
+      <div class="grp speed-grp">
+        <label class="lbl" for="speed">Speed</label>
+        <div class="speed">
+          <input id="speed" name="speed" type="range" min="0" max="5" step="1" value="2" aria-valuetext="1×, normal">
+          <div class="ticks" id="speedTicks" aria-hidden="true"></div>
+        </div>
+        <output class="speedval" id="speedOut" for="speed">1× <small>normal</small></output>
+      </div>
+      <div class="spacer"></div>
+      <div class="em-wrap" id="emGroup">
+        <button type="button" class="btn em" id="emSend" aria-haspopup="menu" aria-expanded="false" aria-controls="emMenu"><span aria-hidden="true">🚨</span><span id="emSendText" class="t-long">Send emergency vehicle</span><span class="t-short" aria-hidden="true">Emergency</span><span class="count" id="emCount" hidden></span><svg viewBox="0 0 16 16" aria-hidden="true" class="stroke caret-ico"><path d="M4 6.2l4 4 4-4"/></svg></button>
+        <div class="menu" id="emMenu" role="menu" aria-label="Which emergency vehicle to send" hidden></div>
+      </div>
+      <div class="more-wrap">
+        <button type="button" class="btn sq ghost" id="moreBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu" aria-label="More options"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12.5" cy="8" r="1.5"/></svg></button>
+        <div class="menu right" id="moreMenu" role="menu" aria-label="More options" hidden>
+          <button type="button" role="menuitem" id="stepBtn">Step one decision (5 s)</button>
+          <button type="button" role="menuitem" id="vehiclesBtn">Vehicle types on the road</button>
+          <button type="button" role="menuitem" id="techBtn">Technical details</button>
+        </div>
+      </div>
+    </nav>
+
+    <p id="untrained" class="notice" hidden>No trained model was found on this server, so the RL Agent System is running an <strong>untrained</strong> policy.</p>
+
+    <main class="layout" id="arena" tabindex="-1">
+      <div class="grids">
+        <article class="gridcard rl" id="cardRL" aria-label="RL Agent System grid">
+          <header>
+            <div class="gh-row"><span class="name"><i></i>RL Agent System</span><span class="gwait" title="Average wait at red lights, per vehicle, this run · lower is better">avg wait <b id="gwRL">–</b></span></div>
+            <div class="gh-sub" id="ghRL"><span class="desc">4 learning agents · each decides every 5 s</span><span class="gtrk" hidden><span class="gico" aria-hidden="true"></span><span class="trk-status" data-status="pending"><b>–</b></span><span class="greason"></span><span class="gjn"></span></span></div>
+          </header>
+          <div class="stage" id="stageRL"><canvas id="netRL" role="img" aria-label="Road grid controlled by the RL Agent System, animated live"></canvas></div>
+        </article>
+        <article class="gridcard tr" id="cardFT" aria-label="Traditional Traffic System grid">
+          <header>
+            <div class="gh-row"><span class="name"><i></i>Traditional Traffic System</span><span class="gwait" title="Average wait at red lights, per vehicle, this run · lower is better">avg wait <b id="gwFT">–</b></span></div>
+            <div class="gh-sub" id="ghFT"><span class="desc">fixed-time · 30 s per direction</span><span class="gtrk" hidden><span class="gico" aria-hidden="true"></span><span class="trk-status" data-status="pending"><b>–</b></span><span class="greason"></span><span class="gjn"></span></span></div>
+          </header>
+          <div class="stage" id="stageFT"><canvas id="netFT" role="img" aria-label="The same road grid and traffic under the traditional fixed-time system, animated live"></canvas></div>
+        </article>
+      </div>
+
+      <section class="tracker" id="tracker" aria-labelledby="trkTitle" aria-hidden="true">
+        <header class="trk-head">
+          <span class="trk-ico" id="trkIco" aria-hidden="true">🚑</span>
+          <h2 id="trkTitle">Ambulance</h2>
+          <span class="trk-meta" id="trkMeta"></span>
+          <span class="trk-verdict" id="trkVerdict" hidden></span>
+          <div class="trk-pick" id="trkPick" role="tablist" aria-label="Tracked vehicles" hidden></div>
+          <div class="trk-actions">
+            <button type="button" class="chipbtn" id="trkFocus" aria-pressed="true" title="Dim the map around the tracked vehicle (F)">Focus</button>
+            <button type="button" class="chipbtn" id="trkTimeline" aria-haspopup="dialog">Timeline</button>
+            <button type="button" class="chipbtn x" id="trkClose" aria-label="Close the tracker (it opens again for the next emergency vehicle)">✕</button>
+          </div>
+        </header>
+        <p class="trk-ahead" id="trkAhead" hidden></p>
+        <div class="trk-lane rl" id="laneRL">
+          <span class="who rl"><i></i>RL Agent System</span>
+          <span class="trk-status" data-status="pending"><b>–</b></span>
+          <span class="trk-reason"></span>
+          <span class="trk-jn"></span>
+          <div class="trk-track" aria-hidden="true"><span class="rail"></span><span class="fill"></span><span class="marker"></span></div>
+          <span class="trk-time"></span>
+        </div>
+        <div class="trk-lane tr" id="laneFT">
+          <span class="who tr"><i></i>Traditional System</span>
+          <span class="trk-status" data-status="pending"><b>–</b></span>
+          <span class="trk-reason"></span>
+          <span class="trk-jn"></span>
+          <div class="trk-track" aria-hidden="true"><span class="rail"></span><span class="fill"></span><span class="marker"></span></div>
+          <span class="trk-time"></span>
+        </div>
+      </section>
+
+      <div class="below">
+        <section class="card result" aria-labelledby="resHead">
+          <div class="eyebrow"><span>Live result · this run</span><span class="pill" id="trafficPill">Rush hour traffic</span></div>
+          <h2 id="resHead" aria-live="polite">Measuring the first two minutes…</h2>
+          <div class="mlabel">Average wait at red lights, per vehicle <button type="button" class="tip" aria-label="What is this?" data-tip="How long a vehicle stands still at red lights, on average, in this run so far (vehicles still on the road included). Lower is better.">?</button></div>
+          <div class="duo">
+            <div class="one rl"><span class="who rl"><i></i>RL Agent System</span><span class="num"><span id="wRL">–</span><small>s</small></span></div>
+            <span class="vs">vs</span>
+            <div class="one tr"><span class="who tr"><i></i>Traditional System</span><span class="num"><span id="wFT">–</span><small>s</small></span></div>
+          </div>
+          <p class="note" id="resNote">The numbers fill in as vehicles arrive.</p>
+          <p class="bench">Benchmark, 36 runs: <b>15%</b> less waiting in light traffic, <b>61%</b> less at rush hour · <a href="https://github.com/Adityakumar1805/marl-traffic-signal-control/blob/main/REPORT.md" target="_blank" rel="noopener">Full report ↗</a></p>
+        </section>
+
+        <div class="tiles" id="tiles">
+          <section class="tile t-q" aria-labelledby="qTitle">
+            <div class="th"><h2 id="qTitle">Cars queued per junction <button type="button" class="tip" aria-label="What is this?" data-tip="Vehicles standing at red lights, averaged over the four junctions and the run so far. Lower is better.">?</button></h2><span class="chip" id="qChip">–</span></div>
+            <div class="bar rl"><span class="who rl"><i></i>RL Agent</span><span class="track"><i id="qBarRL"></i></span><b id="qRL">–</b></div>
+            <div class="bar tr"><span class="who tr"><i></i>Traditional</span><span class="track"><i id="qBarFT"></i></span><b id="qFT">–</b></div>
+          </section>
+          <section class="tile t-trips" aria-labelledby="tTitle">
+            <div class="th"><h2 id="tTitle">Trips completed <button type="button" class="tip" aria-label="What is this?" data-tip="Vehicles that have finished their journey through the grid in this run. Higher is better.">?</button></h2><span class="chip" id="tChip">–</span></div>
+            <p class="tv"><span class="a" id="tRL">0</span><span class="vs2">vs</span><span class="b" id="tFT">0</span></p>
+            <p class="ts">vehicles that have finished their journey this run</p>
+          </section>
+          <section class="tile t-em" id="emTile" aria-labelledby="eTitle">
+            <div class="th"><h2 id="eTitle"><span aria-hidden="true">🚨</span> Emergency test <button type="button" class="tip" aria-label="What is this?" data-tip="Send an ambulance, police car or fire engine: the same vehicle enters both grids, both systems give it priority at every junction, and the tracker shows where it is and whether it is moving.">?</button></h2><span class="chip" id="eChip" hidden></span></div>
+            <p class="tv muted" id="eHead">Not run yet</p>
+            <p class="ts" id="eText">Send one and see which system gets it through faster. It is circled and tracked on both grids.</p>
+            <button type="button" class="linkbtn" id="eTimeline" aria-haspopup="dialog" hidden>See its timeline</button>
+          </section>
+        </div>
+
+        <section class="card chart-card" aria-label="The run so far">
+          <div class="ch-head">
+            <div class="seg sm" role="tablist" aria-label="Chart">
+              <button type="button" role="tab" id="chWait" aria-selected="true">Waiting time</button>
+              <button type="button" role="tab" id="chQueue" aria-selected="false">Cars queued</button>
+            </div>
+            <div class="legend"><span><i class="l-rl"></i>RL Agent System</span><span><i class="l-tr"></i>Traditional Traffic System</span></div>
+          </div>
+          <div class="chart-box"><canvas id="chart" role="img" aria-label="Average waiting time over the run"></canvas></div>
+          <p class="caption" id="chCaption">Shaded area = time saved by RL · lower is better</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <span>Both grids get identical traffic. A safety layer adds a 3 s amber and 2 s all-red to every change, on both.</span>
+      <nav aria-label="Project links"><a href="https://github.com/Adityakumar1805/marl-traffic-signal-control" target="_blank" rel="noopener">Source code</a><a href="https://github.com/Adityakumar1805/marl-traffic-signal-control/blob/main/REPORT.md" target="_blank" rel="noopener">Full report</a><a href="/healthz">Server status</a></nav>
+      <span class="keys">Shortcuts: <kbd>Space</kbd> pause · <kbd>R</kbd> restart · <kbd>E</kbd> emergency vehicle · <kbd>F</kbd> focus</span>
+    </footer>
+  </div>
+
+  <div class="bottombar" id="bottombar" role="group" aria-label="Simulation controls">
+    <button type="button" class="btn primary" id="bbPlay"><svg viewBox="0 0 16 16" aria-hidden="true" class="ico-pause"><rect x="3.5" y="2.5" width="3.2" height="11" rx="1"/><rect x="9.3" y="2.5" width="3.2" height="11" rx="1"/></svg><svg viewBox="0 0 16 16" aria-hidden="true" class="ico-play"><path d="M4.5 2.8v10.4L13 8z"/></svg><span id="bbPlayText">Pause</span></button>
+    <button type="button" class="btn sq" id="bbReset" aria-label="Restart"><svg viewBox="0 0 16 16" aria-hidden="true" class="stroke"><path d="M2.8 8.2A5.2 5.2 0 1 0 4.4 4.3"/><path d="M2.6 2.3v3.4H6"/></svg></button>
+    <div class="bb-em">
+      <button type="button" class="btn em" id="bbEm" aria-haspopup="menu" aria-expanded="false" aria-controls="bbEmMenu"><span aria-hidden="true">🚨</span>Emergency<span class="count" id="bbEmCount" hidden></span></button>
+      <div class="menu up" id="bbEmMenu" role="menu" aria-label="Which emergency vehicle to send" hidden></div>
+    </div>
+    <button type="button" class="btn sq" id="bbMore" aria-label="Traffic, speed and more" aria-expanded="false" aria-controls="toolbar"><svg viewBox="0 0 16 16" aria-hidden="true" class="stroke"><path d="M2.5 4.5h11M2.5 11.5h11"/><circle cx="6" cy="4.5" r="1.9" class="knob"/><circle cx="10.5" cy="11.5" r="1.9" class="knob"/></svg></button>
+  </div>
+
+  <dialog id="helpDlg" aria-labelledby="helpTitle">
+    <button type="button" class="dlg-x" data-close aria-label="Close">✕</button>
+    <h2 id="helpTitle">How to read this page</h2>
+    <ul class="help">
+      <li><b>Two grids, the same traffic.</b> The same vehicles enter both grids at the same moments. <span class="c-rl">Green</span> is the RL Agent System (four learning agents, one per junction); <span class="c-tr">grey</span> is the Traditional Traffic System (a fixed 30 s timer per direction).</li>
+      <li><b>Lower is better</b> for waiting time and queues; higher is better for trips completed.</li>
+      <li><b>Emergency vehicles</b> (🚨 button): choose an ambulance, a police car or a fire engine; the same vehicle enters both grids. It is circled on both maps with a label saying whether it is <b class="c-ok">moving</b>, <b class="c-wait">waiting</b> or <b class="c-bad">not moving</b> (no progress for 30 s), the light it waits at is ringed and its route ahead is dashed. The line above each map says the same in words, and the tracker under the maps shows which system is ahead, every junction and how long it took to get through. When it waits too far back in a long queue to be drawn, a dashed circle marks that queue's <b>+n</b> badge. <b>Timeline</b> lists every step.</li>
+      <li id="helpAuto" hidden></li>
+      <li><b>Safety first:</b> both systems must show a 3 s amber and a 2 s all-red at every change, even for an emergency vehicle.</li>
+      <li><b>Shared demo:</b> everyone watching sees the same run and the same button presses.</li>
+    </ul>
+    <h3>Shortcuts</h3>
+    <p class="keys-list"><kbd>Space</kbd> pause / play · <kbd>R</kbd> restart · <kbd>E</kbd> choose an emergency vehicle · <kbd>F</kbd> focus on it · <kbd>T</kbd> its timeline · <kbd>?</kbd> this help</p>
+  </dialog>
+
+  <dialog id="vehiclesDlg" aria-labelledby="vehTitle">
+    <button type="button" class="dlg-x" data-close aria-label="Close">✕</button>
+    <h2 id="vehTitle">Vehicles on the RL grid right now <span class="hint">India drives on the left</span></h2>
+    <ul id="legendList"></ul>
+  </dialog>
+
+  <dialog id="techDlg" aria-labelledby="techTitle">
+    <button type="button" class="dlg-x" data-close aria-label="Close">✕</button>
+    <h2 id="techTitle">Technical details</h2>
+    <dl class="tech">
+      <dt>Model</dt><dd><span id="ckpt">–</span> · <span id="nnBackend">–</span> network</dd>
+      <dt>Grid</dt><dd><span id="gridLabel">2×2</span> junctions, decisions every <span id="decS">5</span> s</dd>
+      <dt>Run</dt><dd>second <span id="elapsed">0</span> of <span id="epLen">1800</span></dd>
+      <dt>Connection</dt><dd><span id="connText">–</span> <span id="rtt"></span></dd>
+      <dt>Build</dt><dd id="buildId">–</dd>
+    </dl>
+    <p><a href="/healthz">Server status (JSON)</a></p>
+  </dialog>
+
+  <dialog id="timelineDlg" aria-labelledby="tlTitle">
+    <button type="button" class="dlg-x" data-close aria-label="Close">✕</button>
+    <h2 id="tlTitle">Timeline</h2>
+    <p class="hint" id="tlSub">Time since the vehicle was sent, in minutes:seconds of simulated time.</p>
+    <div class="tl-cols">
+      <section><h3 class="who rl"><i></i>RL Agent System</h3><ol id="tlRL"></ol></section>
+      <section><h3 class="who tr"><i></i>Traditional System</h3><ol id="tlFT"></ol></section>
+    </div>
+  </dialog>
+
+  <div id="tipPop" class="tip-pop" role="tooltip" hidden></div>
+  <div id="toast" class="toast" role="alert" hidden></div>
+  <div id="announce" class="sr-only" aria-live="polite"></div>
+
+  <div id="wake" class="wake" hidden>
+    <div class="wake-card" role="status" aria-live="polite">
+      <div class="wake-signal" aria-hidden="true"><i></i><i></i><i></i></div>
+      <h2 id="wakeTitle">Waking up the server…</h2>
+      <p id="wakeText">This free demo goes to sleep when nobody is watching. Starting it again takes up to a minute — the page connects by itself as soon as it is up.</p>
+      <p class="wake-meta"><span id="wakeElapsed">0</span> s · attempt <span id="wakeAttempt">1</span></p>
+    </div>
+  </div>
+
+  <noscript><p class="notice">This live dashboard needs JavaScript. The results are also in the project README.</p></noscript>
+</body>
+</html>
